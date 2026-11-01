@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101114">
+<title>Arlo AI · Local test</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101114;color:#f4f4f5}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#20232c 0,#101114 55%);display:flex;justify-content:center}
+main{width:min(100%,850px);min-height:100vh;display:flex;flex-direction:column;padding:22px 16px max(18px,env(safe-area-inset-bottom));gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-size:22px;font-weight:750;letter-spacing:-.7px}.brand span{color:#9b8cff}.tag{font-size:12px;color:#a1a1aa;border:1px solid #343640;border-radius:99px;padding:6px 10px}
+#status{font-size:13px;color:#c4b5fd;line-height:1.5;background:#1b1b25;border:1px solid #38334e;border-radius:12px;padding:11px 13px}
+#progress{height:5px;background:#292a32;border-radius:9px;overflow:hidden}#bar{height:100%;width:0;background:#9b8cff;transition:width .2s}
+#messages{flex:1;min-height:38vh;display:flex;flex-direction:column;gap:12px;padding:12px 0}
+.msg{max-width:88%;padding:12px 14px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;font-size:15px}.user{align-self:flex-end;background:#51458b;color:white;border-bottom-right-radius:5px}.assistant{align-self:flex-start;background:#24252d;border:1px solid #353640;border-bottom-left-radius:5px}
+form{display:flex;gap:9px;align-items:flex-end;background:#1c1d23;border:1px solid #3a3b45;border-radius:18px;padding:9px}
+textarea{flex:1;min-width:0;resize:none;max-height:130px;min-height:44px;border:0;outline:0;background:transparent;color:white;font:inherit;padding:10px}
+button{border:0;border-radius:12px;background:#9b8cff;color:#15131f;font-weight:700;padding:12px 15px;min-height:44px}button:disabled{opacity:.45}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:10px}.quiet{background:#282932;color:#ddd;font-size:12px;padding:9px 11px}.hint{font-size:12px;color:#92939d;line-height:1.5}
+</style>
+</head>
+<body>
+<main>
+<header><div class="brand">arlo<span>·</span>ai</div><div class="tag">LOCAL MODEL TEST</div></header>
+<div id="status">Ready to load Qwen 2.5 0.5B. The first download is about 0.5–0.8 GB depending on the browser-compatible model file selected.</div>
+<div id="progress"><div id="bar"></div></div>
+<div class="actions"><button id="load">Load AI model</button><button id="clear" class="quiet">Clear chat</button></div>
+<div id="messages"><div class="msg assistant">Hi! Load the model above, then send a message. This test runs the model in your browser.</div></div>
+<form id="form"><textarea id="prompt" rows="1" placeholder="Load the model to start chatting…" disabled></textarea><button id="send" disabled>Send</button></form>
+<div class="hint">Runs on this device using Transformers.js and an open model from Hugging Face. The model is downloaded once and may be reused from browser cache. Chat history is saved in this browser on this device. Clearing site data can remove both. Keep this page open while the first model download completes.</div>
+</main>
+<script type="module">
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+env.useBrowserCache = true;
+env.allowLocalModels = false;
+
+const MODEL = "onnx-community/Qwen2.5-0.5B-Instruct";
+const statusEl = document.querySelector("#status");
+const bar = document.querySelector("#bar");
+const loadBtn = document.querySelector("#load");
+const promptEl = document.querySelector("#prompt");
+const sendBtn = document.querySelector("#send");
+const messagesEl = document.querySelector("#messages");
+const form = document.querySelector("#form");
+let generator = null;
+let busy = false;
+let chat = [{role:"system",content:"You are Arlo, a helpful, clear, friendly AI assistant. Answer accurately and admit uncertainty."}];
+
+function status(text){statusEl.textContent=text}
+function bubble(role,text){const el=document.createElement("div");el.className="msg "+role;el.textContent=text;messagesEl.append(el);messagesEl.scrollTop=messagesEl.scrollHeight;return el}
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open("arlo-ai-test",1);req.onupgradeneeded=()=>req.result.createObjectStore("data");req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function saveChat(){try{const db=await openDB();const tx=db.transaction("data","readwrite");tx.objectStore("data").put(chat,"chat");tx.oncomplete=()=>db.close()}catch(e){console.warn("Could not save chat",e)}}
+async function restoreChat(){try{const db=await openDB();const value=await new Promise((resolve,reject)=>{const req=db.transaction("data").objectStore("data").get("chat");req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});db.close();if(Array.isArray(value)&&value.length){chat=value;messagesEl.innerHTML="";for(const m of chat.filter(x=>x.role!=="system"))bubble(m.role==="user"?"user":"assistant",m.content)}}catch(e){console.warn("Could not restore chat",e)}}
+function setProgress(p){bar.style.width=Math.max(0,Math.min(100,p||0))+"%"}
+loadBtn.addEventListener("click",async()=>{
+ if(generator)return;
+ loadBtn.disabled=true;status("Loading model files. The first download can take a while; keep this tab open.");setProgress(3);
+ try{
+   const progress_callback=(p)=>{if(p.status==="progress"){const pct=p.progress||0;setProgress(pct);status("Downloading model files… "+Math.round(pct)+"%")}else if(p.status==="done"){status("Model file ready. Preparing the AI…")}};
+   try{
+     status("Trying the smaller Q4F16 WebGPU model…");
+     generator=await pipeline("text-generation",MODEL,{device:"webgpu",dtype:"q4f16",progress_callback});
+   }catch(webgpuError){
+     console.warn("WebGPU Q4F16 unavailable; trying WASM Q4",webgpuError);
+     generator=null;setProgress(0);status("This browser/device could not use the WebGPU version. Trying the WASM-compatible Q4 model…");
+     generator=await pipeline("text-generation",MODEL,{device:"wasm",dtype:"q4",progress_callback});
+   }
+   setProgress(100);status("Arlo is ready. Model inference runs locally in this browser.");promptEl.disabled=false;sendBtn.disabled=false;promptEl.placeholder="Message Arlo…";promptEl.focus();loadBtn.textContent="Model loaded";
+ }catch(error){console.error(error);status("Could not load the model: "+(error?.message||String(error))+". Try a newer browser or a device with more available memory.");loadBtn.disabled=false;setProgress(0)}
+});
+form.addEventListener("submit",async(e)=>{
+ e.preventDefault();const text=promptEl.value.trim();if(!text||!generator||busy)return;
+ busy=true;promptEl.value="";promptEl.disabled=true;sendBtn.disabled=true;bubble("user",text);chat.push({role:"user",content:text});await saveChat();
+ const thinking=bubble("assistant","Thinking…");
+ try{
+   const output=await generator(chat,{max_new_tokens:220,do_sample:true,temperature:0.7});
+   const generated=output?.[0]?.generated_text;
+   let answer="";
+   if(Array.isArray(generated)){const last=generated[generated.length-1];answer=last?.content||""}
+   else if(typeof generated==="string"){answer=generated.slice(generated.lastIndexOf(text)+text.length).trim()}
+   if(!answer)answer="I couldn't produce a response that time. Try again.";
+   thinking.textContent=answer;chat.push({role:"assistant",content:answer});await saveChat();
+ }catch(error){console.error(error);thinking.textContent="Generation failed: "+(error?.message||String(error))}
+ finally{busy=false;promptEl.disabled=false;sendBtn.disabled=false;promptEl.focus()}
+});
+document.querySelector("#clear").addEventListener("click",async()=>{chat=[{role:"system",content:"You are Arlo, a helpful, clear, friendly AI assistant. Answer accurately and admit uncertainty."}];messagesEl.innerHTML="";bubble("assistant","Chat cleared. Your saved conversation on this device has been cleared.");await saveChat()});
+await restoreChat();
+if(navigator.storage?.persist){navigator.storage.persist().then(ok=>console.log("Persistent storage granted:",ok)).catch(()=>{});}
+</script>
+</body>
+</html>
