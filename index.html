@@ -17,7 +17,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px}.b
 form{display:flex;gap:9px;align-items:flex-end;background:#1c1d23;border:1px solid #3a3b45;border-radius:18px;padding:9px}
 textarea{flex:1;min-width:0;resize:none;max-height:130px;min-height:44px;border:0;outline:0;background:transparent;color:white;font:inherit;padding:10px}
 button{border:0;border-radius:12px;background:#9b8cff;color:#15131f;font-weight:700;padding:12px 15px;min-height:44px}button:disabled{opacity:.45}
-.actions{display:flex;justify-content:space-between;align-items:center;gap:10px}.quiet{background:#282932;color:#ddd;font-size:12px;padding:9px 11px}.hint{font-size:12px;color:#92939d;line-height:1.5}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:10px}.quiet{background:#282932;color:#ddd;font-size:12px;padding:9px 11px}.hint{font-size:12px;color:#92939d;line-height:1.5}\n#errorOverlay{position:fixed;inset:0;z-index:20;background:rgba(5,5,8,.88);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;padding:22px}#errorOverlay.show{display:flex}.errorCard{width:min(100%,440px);background:#202129;border:1px solid #514b68;border-radius:22px;padding:22px;box-shadow:0 20px 70px #0009}.errorIcon{width:42px;height:42px;border-radius:14px;background:#49333b;color:#ffb4c0;display:grid;place-items:center;font-size:23px;margin-bottom:14px}.errorCard h2{font-size:20px;margin:0 0 8px}.errorCard p{font-size:14px;color:#c2c1cb;line-height:1.55;margin:0 0 12px}.errorDetail{font-size:12px;color:#ffb9c4;background:#17171d;border-radius:10px;padding:10px;max-height:110px;overflow:auto;overflow-wrap:anywhere;margin:12px 0 16px}.errorActions{display:flex;gap:9px}.errorActions button{flex:1}
 </style>
 </head>
 <body>
@@ -67,7 +67,7 @@ loadBtn.addEventListener("click",async()=>{
      generator=await pipeline("text-generation",MODEL,{device:"wasm",dtype:"q4",progress_callback});
    }
    setProgress(100);status("Arlo is ready. Model inference runs locally in this browser.");promptEl.disabled=false;sendBtn.disabled=false;promptEl.placeholder="Message Arlo…";promptEl.focus();loadBtn.textContent="Model loaded";
- }catch(error){console.error(error);status("Could not load the model: "+(error?.message||String(error))+". Try a newer browser or a device with more available memory.");loadBtn.disabled=false;setProgress(0)}
+ }catch(error){console.error(error);const detail=error?.message||String(error);status("Could not load the model. See the error panel for details.");loadBtn.disabled=false;setProgress(0);window.showArloError("Could not load the AI",detail)}
 });
 form.addEventListener("submit",async(e)=>{
  e.preventDefault();const text=promptEl.value.trim();if(!text||!generator||busy)return;
@@ -81,7 +81,7 @@ form.addEventListener("submit",async(e)=>{
    else if(typeof generated==="string"){answer=generated.slice(generated.lastIndexOf(text)+text.length).trim()}
    if(!answer)answer="I couldn't produce a response that time. Try again.";
    thinking.textContent=answer;chat.push({role:"assistant",content:answer});await saveChat();
- }catch(error){console.error(error);thinking.textContent="Generation failed: "+(error?.message||String(error))}
+ }catch(error){console.error(error);thinking.textContent="Generation failed: "+(error?.message||String(error));window.showArloError("Reply generation failed",error?.message||String(error))}
  finally{busy=false;promptEl.disabled=false;sendBtn.disabled=false;promptEl.focus()}
 });
 document.querySelector("#clear").addEventListener("click",async()=>{chat=[{role:"system",content:"You are Arlo, a helpful, clear, friendly AI assistant. Answer accurately and admit uncertainty."}];messagesEl.innerHTML="";bubble("assistant","Chat cleared. Your saved conversation on this device has been cleared.");await saveChat()});
