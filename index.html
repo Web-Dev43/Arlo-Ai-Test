@@ -23,7 +23,7 @@ button{border:0;border-radius:12px;background:#9b8cff;color:#15131f;font-weight:
 <body>
 <main>
 <header><div class="brand">arlo<span>·</span>ai</div><div class="tag">LOCAL MODEL TEST</div></header>
-<div id="status">Ready to load Qwen 2.5 0.5B. The first download is about 0.5–0.8 GB depending on the browser-compatible model file selected.</div>
+<div id="status">Ready to load LFM2.5 350M. The first download is about 300 MB for the Q4 model, plus browser/runtime memory.</div>
 <div id="progress"><div id="bar"></div></div>
 <div class="actions"><button id="load">Load AI model</button><button id="clear" class="quiet">Clear chat</button></div>
 <div id="messages"><div class="msg assistant">Hi! Load the model above, then send a message. This test runs the model in your browser.</div></div>
@@ -35,7 +35,7 @@ import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transfo
 env.useBrowserCache = true;
 env.allowLocalModels = false;
 
-const MODEL = "onnx-community/Qwen2.5-0.5B-Instruct";
+const MODEL = "onnx-community/LFM2.5-350M-ONNX";
 const statusEl = document.querySelector("#status");
 const bar = document.querySelector("#bar");
 const loadBtn = document.querySelector("#load");
@@ -59,15 +59,15 @@ loadBtn.addEventListener("click",async()=>{
  try{
    const progress_callback=(p)=>{if(p.status==="progress"){const pct=p.progress||0;setProgress(pct);status("Downloading model files… "+Math.round(pct)+"%")}else if(p.status==="done"){status("Model file ready. Preparing the AI…")}};
    try{
-     status("Trying the smaller Q4F16 WebGPU model…");
-     generator=await pipeline("text-generation",MODEL,{device:"webgpu",dtype:"q4f16",progress_callback});
+     status("Loading the smaller LFM2.5 350M Q4 model with WebGPU…");
+     generator=await pipeline("text-generation",MODEL,{device:"webgpu",dtype:"q4",progress_callback});
    }catch(webgpuError){
-     console.warn("WebGPU Q4F16 unavailable; trying WASM Q4",webgpuError);
-     generator=null;setProgress(0);status("This browser/device could not use the WebGPU version. Trying the WASM-compatible Q4 model…");
+     console.warn("WebGPU Q4 unavailable; trying WASM Q4",webgpuError);
+     generator=null;setProgress(0);status("WebGPU is unavailable. Trying the smaller Q4 model with WASM…");
      generator=await pipeline("text-generation",MODEL,{device:"wasm",dtype:"q4",progress_callback});
    }
    setProgress(100);status("Arlo is ready. Model inference runs locally in this browser.");promptEl.disabled=false;sendBtn.disabled=false;promptEl.placeholder="Message Arlo…";promptEl.focus();loadBtn.textContent="Model loaded";
- }catch(error){console.error(error);const detail=error?.message||String(error);status("Could not load the model. See the error panel for details.");loadBtn.disabled=false;setProgress(0);window.showArloError("Could not load the AI",detail)}
+ }catch(error){console.error(error);const detail=error?.message||String(error);status("Could not load the model. See the error panel for details.");loadBtn.disabled=false;setProgress(0);window.showArloError("Could not load the smaller AI model",detail)}
 });
 form.addEventListener("submit",async(e)=>{
  e.preventDefault();const text=promptEl.value.trim();if(!text||!generator||busy)return;
