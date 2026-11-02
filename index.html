@@ -23,9 +23,9 @@ button{border:0;border-radius:12px;background:#9b8cff;color:#15131f;font-weight:
 <body>
 <main>
 <header><div class="brand">arlo<span>·</span>ai</div><div class="tag">LOCAL MODEL TEST</div></header>
-<div id="status">Ready to load LFM2.5 350M. The first download is about 300 MB for the Q4 model, plus browser/runtime memory.</div>
+<div id="status">Choose either local model to compare them. Download sizes shown are approximate Q4 model files; running them also needs extra browser memory.</div>
 <div id="progress"><div id="bar"></div></div>
-<div class="actions"><button id="load">Load AI model</button><button id="clear" class="quiet">Clear chat</button></div>
+<div class="actions"><label for="modelSelect" class="hint">Choose model<br><select id="modelSelect" style="margin-top:5px;background:#24252d;color:#fff;border:1px solid #454650;border-radius:10px;padding:10px;max-width:210px"><option value="lfm">LFM2.5 350M · ~294 MB</option><option value="smol">SmolLM2 360M · ~388 MB</option></select></label><button id="load">Load selected model</button><button id="clear" class="quiet">Clear chat</button></div>
 <div id="messages"><div class="msg assistant">Hi! Load the model above, then send a message. This test runs the model in your browser.</div></div>
 <form id="form"><textarea id="prompt" rows="1" placeholder="Load the model to start chatting…" disabled></textarea><button id="send" disabled>Send</button></form>
 <div class="hint">Runs on this device using Transformers.js and an open model from Hugging Face. The model is downloaded once and may be reused from browser cache. Chat history is saved in this browser on this device. Clearing site data can remove both. Keep this page open while the first model download completes.</div>
@@ -35,7 +35,7 @@ import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transfo
 env.useBrowserCache = true;
 env.allowLocalModels = false;
 
-const MODEL = "onnx-community/LFM2.5-350M-ONNX";
+const MODELS = {lfm:{id:"onnx-community/LFM2.5-350M-ONNX",name:"LFM2.5 350M",size:"about 294 MB"},smol:{id:"HuggingFaceTB/SmolLM2-360M-Instruct",name:"SmolLM2 360M",size:"about 388 MB"}};\nconst modelSelect = document.querySelector("#modelSelect");
 const statusEl = document.querySelector("#status");
 const bar = document.querySelector("#bar");
 const loadBtn = document.querySelector("#load");
@@ -66,8 +66,8 @@ loadBtn.addEventListener("click",async()=>{
      generator=null;setProgress(0);status("WebGPU is unavailable. Trying the smaller Q4 model with WASM…");
      generator=await pipeline("text-generation",MODEL,{device:"wasm",dtype:"q4",progress_callback});
    }
-   setProgress(100);status("Arlo is ready. Model inference runs locally in this browser.");promptEl.disabled=false;sendBtn.disabled=false;promptEl.placeholder="Message Arlo…";promptEl.focus();loadBtn.textContent="Model loaded";
- }catch(error){console.error(error);const detail=error?.message||String(error);status("Could not load the model. See the error panel for details.");loadBtn.disabled=false;setProgress(0);window.showArloError("Could not load the smaller AI model",detail)}
+   setProgress(100);status(selected.name+" is ready. Model inference runs locally in this browser.");promptEl.disabled=false;sendBtn.disabled=false;promptEl.placeholder="Message Arlo…";promptEl.focus();loadBtn.textContent=selected.name+" loaded";
+ }catch(error){console.error(error);const detail=error?.message||String(error);status("Could not load the model. See the error panel for details.");loadBtn.disabled=false;modelSelect.disabled=false;setProgress(0);window.showArloError("Could not load the smaller AI model",detail)}
 });
 form.addEventListener("submit",async(e)=>{
  e.preventDefault();const text=promptEl.value.trim();if(!text||!generator||busy)return;
