@@ -35,7 +35,8 @@ import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transfo
 env.useBrowserCache = true;
 env.allowLocalModels = false;
 
-const MODELS = {lfm:{id:"onnx-community/LFM2.5-350M-ONNX",name:"LFM2.5 350M",size:"about 294 MB"},smol:{id:"HuggingFaceTB/SmolLM2-360M-Instruct",name:"SmolLM2 360M",size:"about 388 MB"}};\nconst modelSelect = document.querySelector("#modelSelect");
+const MODELS = {lfm:{id:"onnx-community/LFM2.5-350M-ONNX",name:"LFM2.5 350M",size:"about 294 MB"},smol:{id:"HuggingFaceTB/SmolLM2-360M-Instruct",name:"SmolLM2 360M",size:"about 388 MB"}};
+const modelSelect = document.querySelector("#modelSelect");
 const statusEl = document.querySelector("#status");
 const bar = document.querySelector("#bar");
 const loadBtn = document.querySelector("#load");
