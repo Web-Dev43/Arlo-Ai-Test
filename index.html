@@ -26,7 +26,7 @@ button:disabled{opacity:.45}
 .secondary{background:#292a33;color:#e4e4e7;font-size:12px;padding:10px 12px}
 form{display:flex;gap:8px;align-items:flex-end;background:#1c1d23;border:1px solid #3a3b45;border-radius:17px;padding:8px}
 textarea{flex:1;min-width:0;resize:none;max-height:130px;min-height:44px;border:0;outline:0;background:transparent;color:white;font:inherit;padding:10px}
-small{font-size:11px;color:#92939d;line-height:1.5}
+small{font-size:11px;color:#92939d;line-height:1.5}\n#diagnostics{font-size:12px;color:#d4d4dc;background:#1c1d25;border:1px solid #514875;border-radius:12px;padding:11px 12px}\n#diagnostics summary{cursor:pointer;color:#c4b5fd;font-weight:600}\n#errorDetails{white-space:pre-wrap;overflow-wrap:anywhere;max-height:34vh;overflow:auto;margin:10px 0 0;font:11px/1.5 ui-monospace,SFMono-Regular,monospace;color:#fca5a5}
 </style>
 </head>
 <body>
@@ -37,6 +37,7 @@ small{font-size:11px;color:#92939d;line-height:1.5}
 <div class="controls"><button id="load">Load model</button><button id="clear" class="secondary">Clear chat</button><span class="pill">LFM2.5 350M · Q4</span></div>
 <section id="chat" aria-live="polite"><div class="msg bot">Hey! Load the model, then send me a message. This is a plain model test, separate from the unfinished Arlo app.</div></section>
 <form id="form"><textarea id="input" rows="1" placeholder="Load the model first…" disabled></textarea><button id="send" disabled>Send</button></form>
+<details id="diagnostics" hidden><summary>Show technical error details</summary><pre id="errorDetails"></pre></details>
 <small>Model: onnx-community/LFM2.5-350M-ONNX · Transformers.js · WebGPU. No API key or AI server. Model files are fetched from Hugging Face and may be cached by your browser. Chat messages stay in this page and are not saved to an account.</small>
 </main>
 <script type="module">
@@ -50,7 +51,7 @@ const bar = document.querySelector("#bar");
 const loadBtn = document.querySelector("#load");
 const input = document.querySelector("#input");
 const sendBtn = document.querySelector("#send");
-const chatEl = document.querySelector("#chat");
+const chatEl = document.querySelector("#chat");\nconst diagnosticsEl = document.querySelector("#diagnostics");\nconst errorDetailsEl = document.querySelector("#errorDetails");\nconst loadEvents = [];
 const form = document.querySelector("#form");
 let generator = null;
 let busy = false;
@@ -59,6 +60,26 @@ const messages = [{role:"system",content:"You are a helpful, friendly assistant.
 function setStatus(text){statusEl.textContent=text}
 function addMessage(role,text){const el=document.createElement("div");el.className="msg "+(role==="user"?"user":"bot");el.textContent=text;chatEl.append(el);el.scrollIntoView({block:"end",behavior:"smooth"});return el}
 function setProgress(value){bar.style.width=Math.max(0,Math.min(100,value||0))+"%"}
+function logLoadEvent(p){
+  const entry={status:p?.status,file:p?.file,progress:p?.progress,loaded:p?.loaded,total:p?.total};
+  loadEvents.push(entry);
+  if(loadEvents.length>35)loadEvents.shift();
+  const file=entry.file?String(entry.file).split("/").pop():"";
+  const pct=Number.isFinite(entry.progress)?Math.round(entry.progress):null;
+  if(entry.status==="progress"){
+    setProgress(pct??0);
+    const size=entry.loaded&&entry.total?(" · "+Math.round(entry.loaded/1048576)+" / "+Math.round(entry.total/1048576)+" MB"):"";
+    setStatus("Downloading "+(file||"model file")+(pct===null?"":" · "+pct+"%")+size);
+  }else if(entry.status==="done"){
+    setStatus("Downloaded "+(file||"a model file")+". Preparing the model…");
+  }else if(entry.status){
+    setStatus("Model loader: "+entry.status+(file?" · "+file:""));
+  }
+}
+function describeError(error){
+  const info={type:typeof error,constructor:error?.constructor?.name??null,message:error?.message??null,name:error?.name??null,code:error?.code??null,stack:error?.stack??null,cause:error?.cause??null,value:error};
+  try{return JSON.stringify(info,(key,value)=>typeof value==="bigint"?String(value):value,2)}catch{return String(error)}
+}
 
 loadBtn.addEventListener("click",async()=>{
   if(generator||busy)return;
@@ -70,23 +91,30 @@ loadBtn.addEventListener("click",async()=>{
     generator=await pipeline("text-generation",MODEL,{
       dtype:"q4",
       device:"webgpu",
-      progress_callback:(p)=>{
-        if(p.status==="progress"){
-          const pct=p.progress||0;
-          setProgress(pct);
-          setStatus("Downloading model files… "+Math.round(pct)+"%");
-        }else if(p.status==="done"){
-          setStatus("Model files downloaded. Preparing the model…");
-        }
-      }
+      progress_callback:(p)=>logLoadEvent(p)
     });
     setProgress(100);
     setStatus("LFM2.5 350M is ready. Send a message below.");
     loadBtn.textContent="Model loaded";
     input.disabled=false;sendBtn.disabled=false;input.placeholder="Type a message…";input.focus();
   }catch(error){
-    console.error(error);generator=null;loadBtn.disabled=false;setProgress(0);
-    setStatus("Model could not be loaded: "+(error?.message||String(error)));
+    console.error("LFM2.5 model load failed:",error);
+    generator=null;loadBtn.disabled=false;
+    const summary=error?.message||String(error);
+    setStatus("Model could not be loaded: "+summary+". Open the technical details below and send them to me.");
+    diagnosticsEl.hidden=false;
+    errorDetailsEl.textContent=[
+      "Error details:",
+      describeError(error),
+      "",
+      "Browser:",
+      navigator.userAgent,
+      "",
+      "WebGPU available: "+Boolean(navigator.gpu),
+      "",
+      "Recent model-loader events:",
+      JSON.stringify(loadEvents.slice(-20),null,2)
+    ].join("\\n");
   }
 });
 
