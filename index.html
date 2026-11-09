@@ -37,11 +37,11 @@ small{font-size:11px;color:#92939d;line-height:1.5}
 <header><h1>LFM2.5 <span style="color:#a78bfa">Model Test</span></h1><span class="pill">RUNS IN YOUR BROWSER</span></header>
 <div id="status">Ready to load LFM2.5 350M. The model downloads from Hugging Face the first time. Keep this page open while it loads.</div>
 <div class="track"><div id="bar"></div></div>
-<div class="controls"><button id="load">Load model</button><button id="clear" class="secondary">Clear chat</button><span class="pill">LFM2.5 350M · Q4</span></div>
+<div class="controls"><button id="load">Load model</button><button id="clear" class="secondary">Clear chat</button><span class="pill">LFM2.5 350M · Q4 · CPU</span></div>
 <section id="chat" aria-live="polite"><div class="msg bot">Hey! Load the model, then send me a message. This is a plain model test, separate from the unfinished Arlo app.</div></section>
 <form id="form"><textarea id="input" rows="1" placeholder="Load the model first…" disabled></textarea><button id="send" disabled>Send</button></form>
 <details id="diagnostics" hidden><summary>Show technical error details</summary><pre id="errorDetails"></pre></details>
-<small>Model: onnx-community/LFM2.5-350M-ONNX · Transformers.js · WebGPU. No API key or AI server. Model files are fetched from Hugging Face and may be cached by your browser. Chat messages stay in this page and are not saved to an account.</small>
+<small>Model: onnx-community/LFM2.5-350M-ONNX · Transformers.js · WebAssembly CPU test. No API key or AI server. Model files are fetched from Hugging Face and may be cached by your browser. Chat messages stay in this page and are not saved to an account.</small>
 </main>
 <script type="module">
 import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
@@ -90,13 +90,11 @@ function describeError(error){
 loadBtn.addEventListener("click",async()=>{
   if(generator||busy)return;
   loadBtn.disabled=true;
-  setStatus("Checking browser support…");
+  setStatus("Starting the WebAssembly CPU backend…");
   try{
-    if(!navigator.gpu) throw new Error("WebGPU is not available in this browser. Try opening this page in a recent version of Safari or another WebGPU-compatible browser.");
-    setStatus("Downloading LFM2.5 350M. First load may take a few minutes, so keep this tab open.");
+    setStatus("Downloading LFM2.5 350M for the CPU test. First load may take a few minutes, so keep this tab open.");
     generator=await pipeline("text-generation",MODEL,{
       dtype:"q4",
-      device:"webgpu",
       progress_callback:(p)=>logLoadEvent(p)
     });
     setProgress(100);
@@ -116,7 +114,7 @@ loadBtn.addEventListener("click",async()=>{
       "Browser:",
       navigator.userAgent,
       "",
-      "WebGPU available: "+Boolean(navigator.gpu),
+      "Execution backend: WebAssembly CPU (default; device option omitted)",
       "",
       "Recent model-loader events:",
       JSON.stringify(loadEvents.slice(-20),null,2)
