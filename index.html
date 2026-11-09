@@ -26,7 +26,10 @@ button:disabled{opacity:.45}
 .secondary{background:#292a33;color:#e4e4e7;font-size:12px;padding:10px 12px}
 form{display:flex;gap:8px;align-items:flex-end;background:#1c1d23;border:1px solid #3a3b45;border-radius:17px;padding:8px}
 textarea{flex:1;min-width:0;resize:none;max-height:130px;min-height:44px;border:0;outline:0;background:transparent;color:white;font:inherit;padding:10px}
-small{font-size:11px;color:#92939d;line-height:1.5}\n#diagnostics{font-size:12px;color:#d4d4dc;background:#1c1d25;border:1px solid #514875;border-radius:12px;padding:11px 12px}\n#diagnostics summary{cursor:pointer;color:#c4b5fd;font-weight:600}\n#errorDetails{white-space:pre-wrap;overflow-wrap:anywhere;max-height:34vh;overflow:auto;margin:10px 0 0;font:11px/1.5 ui-monospace,SFMono-Regular,monospace;color:#fca5a5}
+small{font-size:11px;color:#92939d;line-height:1.5}
+#diagnostics{font-size:12px;color:#d4d4dc;background:#1c1d25;border:1px solid #514875;border-radius:12px;padding:11px 12px}
+#diagnostics summary{cursor:pointer;color:#c4b5fd;font-weight:600}
+#errorDetails{white-space:pre-wrap;overflow-wrap:anywhere;max-height:34vh;overflow:auto;margin:10px 0 0;font:11px/1.5 ui-monospace,SFMono-Regular,monospace;color:#fca5a5}
 </style>
 </head>
 <body>
@@ -51,7 +54,10 @@ const bar = document.querySelector("#bar");
 const loadBtn = document.querySelector("#load");
 const input = document.querySelector("#input");
 const sendBtn = document.querySelector("#send");
-const chatEl = document.querySelector("#chat");\nconst diagnosticsEl = document.querySelector("#diagnostics");\nconst errorDetailsEl = document.querySelector("#errorDetails");\nconst loadEvents = [];
+const chatEl = document.querySelector("#chat");
+const diagnosticsEl = document.querySelector("#diagnostics");
+const errorDetailsEl = document.querySelector("#errorDetails");
+const loadEvents = [];
 const form = document.querySelector("#form");
 let generator = null;
 let busy = false;
