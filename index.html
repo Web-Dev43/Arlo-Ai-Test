@@ -133,14 +133,14 @@ form.addEventListener("submit",async(event)=>{
   const pending=addMessage("assistant","Thinking…");
   try{
     // Keep the prompt bounded so repeated turns use less browser memory.
-    const recentMessages=[messages[0],...messages.slice(-4).map(message=>({
+    // Keep this mobile Safari test deliberately small: only the latest turn,
+    // short text, and a shorter answer to reduce per-generation memory pressure.
+    const recentMessages=[messages[0],...messages.slice(-2).map(message=>({
       role:message.role,
-      content:String(message.content).slice(-600)
+      content:String(message.content).slice(-300)
     }))];
-    // Disable the KV cache for this mobile Safari stability test. This can be
-    // slower, but avoids retaining a growing generation cache between tokens.
     const result=await generator(recentMessages,{
-      max_new_tokens:48,
+      max_new_tokens:24,
       do_sample:false,
       use_cache:false
     });
