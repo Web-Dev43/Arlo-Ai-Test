@@ -132,8 +132,18 @@ form.addEventListener("submit",async(event)=>{
   addMessage("user",text);messages.push({role:"user",content:text});
   const pending=addMessage("assistant","Thinking…");
   try{
-    const recentMessages=[messages[0],...messages.slice(-4)];
-    const result=await generator(recentMessages,{max_new_tokens:96,do_sample:false});
+    // Keep the prompt bounded so repeated turns use less browser memory.
+    const recentMessages=[messages[0],...messages.slice(-4).map(message=>({
+      role:message.role,
+      content:String(message.content).slice(-600)
+    }))];
+    // Disable the KV cache for this mobile Safari stability test. This can be
+    // slower, but avoids retaining a growing generation cache between tokens.
+    const result=await generator(recentMessages,{
+      max_new_tokens:48,
+      do_sample:false,
+      use_cache:false
+    });
     const generated=result?.[0]?.generated_text;
     let answer="";
     if(Array.isArray(generated)){
