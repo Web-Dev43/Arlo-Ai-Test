@@ -132,7 +132,8 @@ form.addEventListener("submit",async(event)=>{
   addMessage("user",text);messages.push({role:"user",content:text});
   const pending=addMessage("assistant","Thinking…");
   try{
-    const result=await generator(messages,{max_new_tokens:220,do_sample:false});
+    const recentMessages=[messages[0],...messages.slice(-4)];
+    const result=await generator(recentMessages,{max_new_tokens:96,do_sample:false});
     const generated=result?.[0]?.generated_text;
     let answer="";
     if(Array.isArray(generated)){
